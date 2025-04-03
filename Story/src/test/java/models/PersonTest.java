@@ -1,162 +1,120 @@
 package models;
 
-import exception.DuplicatePersonalityException;
-import exception.InvalidSpaceException;
-import exception.InvalidTemperatureException;
+import static org.junit.jupiter.api.Assertions.*;
+
+import exception.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-class PersonTest {
+public class PersonTest {
 
     private Person person;
+    private Place place;
 
     @BeforeEach
     void setUp() {
         person = new Person("Иван");
+        place = new Place("Парк");
     }
 
     @Test
-    @DisplayName("Проверка отрицательной скорости")
-    void testGoByPlaceWithNegativeSpace() {
-        InvalidSpaceException exception = assertThrows(InvalidSpaceException.class, () -> {
-            person.goByPlace(new Place("парк"), -100);
-        });
-        assertEquals("Скорость не может быть отрицательной", exception.getMessage());
+    @DisplayName("Test goByPlace with speed less than 3000")
+    void testGoByPlaceWithSpeedLessThan3000() throws InvalidSpaceException {
+        person.adjustSpeed(10);
+        String result = person.goByPlace(place);
+        assertEquals("Иван идет по Парк", result);
     }
 
     @Test
-    @DisplayName("Проверка скорости NaN")
-    void testGoByPlaceWithNaNSpace() {
-        InvalidSpaceException exception = assertThrows(InvalidSpaceException.class, () -> {
-            person.goByPlace(new Place("парк"), Double.NaN);
-        });
-        assertEquals("Скорость не может быть NaN", exception.getMessage());
+    @DisplayName("Test goByPlace with speed greater than 3000")
+    void testGoByPlaceWithSpeedGreaterThan3000() throws InvalidSpaceException {
+        person.adjustSpeed(3500);
+        String result = person.goByPlace(place);
+        assertEquals("Иван бежит по Парк", result);
     }
 
     @Test
-    @DisplayName("Провека бесконечной скорости")
-    void testGoByPlaceWithInfiniteSpace() {
-        InvalidSpaceException exception = assertThrows(InvalidSpaceException.class, () -> {
-            person.goByPlace(new Place("парк"), Double.POSITIVE_INFINITY);
-        });
-        assertEquals("Скорость не может быть NaN", exception.getMessage());
+    @DisplayName("Test goByPlace with invalid speed")
+    void testGoByPlaceWithInvalidSpeed() {
+        person.adjustSpeed(-10);
+        assertThrows(InvalidSpaceException.class, () -> person.goByPlace(place));
+        person.adjustSpeed(Double.NaN);
+        assertThrows(InvalidSpaceException.class, () -> person.goByPlace(place));
+        person.adjustSpeed(Double.POSITIVE_INFINITY);
+        assertThrows(InvalidSpaceException.class, () -> person.goByPlace(place));
+        person.adjustSpeed(Double.NEGATIVE_INFINITY);
+        assertThrows(InvalidSpaceException.class, () -> person.goByPlace(place));
     }
 
     @Test
-    @DisplayName("Тест -- человек идет")
-    void testGoByPlaceWithValidSpeed() throws InvalidSpaceException {
-        String result = person.goByPlace(new Place("парк"), 1000);
-        assertEquals("Иван идет по парк", result);
-    }
-
-    @Test
-    @DisplayName("Тест -- человек бежит")
-    void testGoByPlaceWithHighSpeed() throws InvalidSpaceException {
-        String result = person.goByPlace(new Place("парк"), 5000);
-        assertEquals("Иван бежит по парк", result);
-    }
-
-    @Test
+    @DisplayName("Test sniff method")
     void testSniff() {
         Smell smell = Smell.FLOWERS;
-        String result = person.sniff(()->smell);
-        assertEquals("Иван чувствует запах цветов", result);
+        String result = person.sniff(() -> smell);
+        assertEquals("Иван чувствует аромат цветов", result);
     }
 
     @Test
+    @DisplayName("Test add personality method")
     void testAddPersonality() throws DuplicatePersonalityException {
         Personality personality = Personality.KIND;
         person.addPersonality(personality);
-
-        assertArrayEquals(new String[]{"Иван демонстрирует доброту"}, person.demonstratePersonality());
+        String[] personalities = person.demonstratePersonality();
+        assertEquals(1, personalities.length);
+        assertEquals("Иван демонстрирует доброту", personalities[0]);
     }
 
     @Test
-    void testAddDuplicatePersonalityThrowsException() {
-        Personality personality = Personality.KIND;
-        try {
-            person.addFakePersonality(personality);
-            assertThrows(DuplicatePersonalityException.class, () -> {
-                person.addPersonality(personality);
-            });
-        } catch (DuplicatePersonalityException e) {
-            assertEquals("Качество не может настоящим и фейковым", e.getMessage());
-        }
-    }
-
-    @Test
+    @DisplayName("Test add fake personality method")
     void testAddFakePersonality() throws DuplicatePersonalityException {
-        Personality personality = Personality.SMART;
+        Personality personality = Personality.NERVOUS;
         person.addFakePersonality(personality);
-
-        assertArrayEquals(new String[]{"Иван искуственно демонстрирует ум"}, person.demonstratePersonality());
+        String[] personalities = person.demonstratePersonality();
+        assertEquals(1, personalities.length);
+        assertEquals("Иван искусственно нервничает", personalities[0]);
     }
 
     @Test
-    void testAddDuplicateFakePersonalityThrowsException() {
-        Personality personality = Personality.SMART;
-        try {
-            person.addPersonality(personality);
-            person.addFakePersonality(personality);
-            assertThrows(DuplicatePersonalityException.class, () -> {
-                person.addFakePersonality(personality);
-            });
-        } catch (DuplicatePersonalityException e) {
-            assertEquals("Качество не может настоящим и фейковым", e.getMessage());
-        }
+    @DisplayName("Test add duplicate personality throws exception")
+    void testAddDuplicatePersonalityThrowsException() throws DuplicatePersonalityException {
+        Personality personality = Personality.KIND;
+        person.addPersonality(personality);
+        assertThrows(DuplicatePersonalityException.class, () -> person.addFakePersonality(personality));
+
+        person.addFakePersonality(Personality.NERVOUS);
+        assertThrows(DuplicatePersonalityException.class, () -> person.addPersonality(Personality.NERVOUS));
     }
 
     @Test
-    void testTouchWallCold() throws InvalidTemperatureException {
-        Wall coldWall = new Wall("каменную", 5);
-        String[] result = person.touchWall(coldWall);
-        assertArrayEquals(new String[]{
-                "Иван видит каменную стену",
-                "Иван трогает стену",
-                "Стена холодная"
-        }, result);
+    @DisplayName("Test touch wall method")
+    void testTouchWall() throws InvalidTemperatureException {
+        Wall wall = new Wall("белая", 10, Material.GLASS);
+        String[] result = person.touchWall(wall);
+        assertEquals(3, result.length);
+        assertEquals("Иван видит белая стену", result[0]);
+        assertEquals("Иван трогает стену", result[1]);
+        assertEquals("Стена теплая", result[2]);
+
+        wall.setTemperature(9);
+        result = person.touchWall(wall);
+        assertEquals("Стена холодная", result[2]);
     }
 
     @Test
-    void testTouchWallHot() throws InvalidTemperatureException {
-        Wall hotWall = new Wall("деревянную", 20);
-        String[] result = person.touchWall(hotWall);
-        assertArrayEquals(new String[]{
-                "Иван видит деревянную стену",
-                "Иван трогает стену",
-                "Стена теплая"
-        }, result);
+    @DisplayName("Test shine flashlight method")
+    void testShineFlashlight() throws InvalidTemperatureException {
+        Wall wall = new Wall("черная", 15, Material.GLASS);
+        String result = person.shineFlashlight(wall, 5, 2);
+        assertTrue(result.contains("Теперь ее видно"));
     }
 
     @Test
-    void testTouchWallWithColdTemperature() throws InvalidTemperatureException {
-        Wall coldWall = new Wall("бетонную", -10);
-        String[] result = person.touchWall(coldWall);
-        assertArrayEquals(new String[]{
-                "Иван видит бетонную стену",
-                "Иван трогает стену",
-                "Стена холодная"
-        }, result);
-    }
-
-    @Test
-    void testInvalidTemperatureThrowsException() {
-        InvalidTemperatureException exception = assertThrows(InvalidTemperatureException.class, () -> {
-            new Wall("стеклянная", Double.NaN);
-        });
-        assertEquals("Температура не может быть NaN", exception.getMessage());
-    }
-
-    @Test
-    @DisplayName("Тестирование слишком горячей стены")
-    void testInvalidTemperatureOutOfRangeThrowsException() {
-        InvalidTemperatureException exception = assertThrows(InvalidTemperatureException.class, () -> {
-            new Wall("металлическую", 150);
-        });
-        assertEquals("Тепмпература не может иметь температуру 150.0", exception.getMessage());
+    @DisplayName("Test sniff around method")
+    void testSniffAround() {
+        place.addSmell(Smell.FLOWERS, 10);
+        String result = person.sniffAround(place);
+        assertEquals("Иван чувствует аромат цветов", result);
+        assertEquals(person.sniffAround(new Place("Пустая")), "Иван не чувствует запахов.");
     }
 }
-
